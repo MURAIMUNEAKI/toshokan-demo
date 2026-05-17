@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex,nofollow">
+<title>国立国会図書館サーチ</title>
+
+<style>
+/* ──────────────────────────────────────────────
+   CSS変数（テーマカラー）
+   ここを変更するとアプリ全体の色が変わる
+   ────────────────────────────────────────────── */
+:root {
+    --bg-main:   #f0f8ff;      /* ページ背景色（水色） */
+    --bg-panel:  #ffffff;      /* カード背景色（白） */
+    --bg-input:  #ffffff;      /* 入力欄背景色 */
+    --text-main: #000000;      /* メインテキスト色 */
+    --text-sub:  #333333;      /* サブテキスト色 */
+    --accent:    #007acc;      /* ボタン色（水色系） */
+    --accent-hover: #005f9e;   /* ボタンホバー色 */
+    --border:    #007acc;      /* 枠線色 */
+    --border-soft:#b3d7ff;     /* 薄い枠線色（装飾用） */
+    --shadow:    0 2px 6px rgba(0,0,0,0.08); /* 影 */
+    --font-base: "Yu Gothic","Hiragino Kaku Gothic ProN","Helvetica Neue","Arial",sans-serif;
+}
+
+/* ──────────────────────────────────────────────
+   基本レイアウト
+   body は flexbox で縦に header + container に分割
+   ────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg-main);
+    color: var(--text-main);
+    font-family: var(--font-base);
+}
+body { display: flex; flex-direction: column; }
+
+/* ──────────────────────────────────────────────
+   ヘッダー（水色帯）
+   ────────────────────────────────────────────── */
+header {
+    background: #87ceeb;
+    border-bottom: 2px solid var(--border);
+    padding: 12px 24px;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+}
+header h1 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--text-main);
+    letter-spacing: 0.05em;
+}
+header h1 .sub {
+    font-size: 12px;
+    color: var(--text-sub);
+    margin-left: 12px;
+    font-weight: normal;
+}
+
+/* ──────────────────────────────────────────────
+   左右分割コンテナ
+   左パネル（検索フォーム）38% + 右パネル（結果）62%
+   ────────────────────────────────────────────── */
+.container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    min-height: 0;
+}
+.panel-left {
+    width: 38%;
+    min-width: 300px;
+    background: var(--bg-main);
+    border-right: 2px solid var(--border);
+    padding: 20px;
+    overflow-y: auto;
+}
+.panel-right {
+    flex: 1;
+    background: var(--bg-main);
+    padding: 20px;
+    overflow-y: auto;
+    min-width: 0;
+}
+
+/* ──────────────────────────────────────────────
+   レスポンシブ対応（768px以下でスマホ用縦積み）
+   ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    html, body { height: auto; }
+    body { display: block; }
+    .container {
+        display: block;
+        overflow: visible;
+    }
+    .panel-left {
+        width: 100%;
+        min-width: 0;
+        border-right: none;
+        border-bottom: 2px solid var(--border);
+    }
+    .panel-right {
+        padding: 14px;
+        overflow: visible;
+    }
+}
+
+/* ──────────────────────────────────────────────
+   フォーム部品（入力欄・セレクトボックス）
+   ────────────────────────────────────────────── */
+.form-group { margin-bottom: 18px; }
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--text-main);
+    margin-bottom: 6px;
+}
+.form-group input[type="text"],
+.form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-input);
+    color: var(--text-main);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-family: var(--font-base);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.form-group input[type="text"]:focus,
+.form-group select:focus {
+    border-color: #005f9e;
+    box-shadow: 0 0 0 2px #b3d7ff;
+}
+
+/* ──────────────────────────────────────────────
+   ボタン
+   ────────────────────────────────────────────── */
+.btn {
+    display: inline-block;
+    padding: 11px 24px;
+    background: var(--accent);
+    color: #ffffff;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-family: var(--font-base);
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    box-shadow: var(--shadow);
+}
+.btn:hover { background: var(--accent-hover); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ステータスメッセージ（件数表示やエラー表示） */
+.status {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--text-sub);
+    min-height: 1.2em;
+}
+
+/* ──────────────────────────────────────────────
+   検索結果ヘッダー（「検索結果」見出し＋件数）
+   ────────────────────────────────────────────── */
+.results-header {
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border-soft);
+}
+.results-header h2 {
+    margin: 0;
+    font-size: 16px;
+}
+.results-count {
+    font-size: 13px;
+    color: var(--text-sub);
+    margin-top: 4px;
+}
+
+/* ──────────────────────────────────────────────
+   検索結果カード（1冊分の書籍情報）
+   ────────────────────────────────────────────── */
+.result-card {
+    background: var(--bg-panel);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.2s;
+}
+.result-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+/* カードタイトル（書籍名） */
+.result-card .card-title {
+    font-size: 15px;
+    font-weight: bold;
+    color: var(--text-main);
+    margin: 0 0 8px 0;
+    line-height: 1.4;
+}
+.result-card .card-title a {
+    color: #007acc;
+    text-decoration: none;
+}
+.result-card .card-title a:hover {
+    text-decoration: underline;
+}
+/* カードメタ情報（著者・出版社・年・ISBN） */
+.result-card .card-meta {
+    font-size: 12px;
+    color: var(--text-sub);
+    line-height: 1.8;
+}
+.result-card .card-meta span {
+    display: inline-block;
+    margin-right: 16px;
+}
+.result-card .card-meta .label {
+    font-weight: bold;
+    color: var(--text-main);
+}
+/* 件名タグ */
+.result-card .card-subject {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #666;
+}
+.result-card .card-subject .tag {
+    display: inline-block;
+    background: #e1f0ff;
+    border: 1px solid var(--border-soft);
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-right: 6px;
+    margin-top: 4px;
+}
+
+/* ──────────────────────────────────────────────
+   ページング（前へ・次へボタン）
+   ────────────────────────────────────────────── */
+.paging {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-soft);
+}
+.paging button {
+    padding: 8px 18px;
+    background: var(--bg-panel);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-family: var(--font-base);
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.paging button:hover:not(:disabled) { background: #e1f0ff; }
+.paging button:disabled { opacity: 0.4; cursor: not-allowed; }
+.paging .page-info {
+    font-size: 13px;
+    color: var(--text-sub);
+}
+
+/* ──────────────────────────────────────────────
+   ローディング表示（検索中のスピナー）
+   ────────────────────────────────────────────── */
+.loading {
+    text-align: center;
+    padding: 40px 0;
+    color: var(--text-sub);
+}
+.spinner {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    border: 3px solid #e0e0e0;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ──────────────────────────────────────────────
+   空状態（初期表示・0件表示）
+   ────────────────────────────────────────────── */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-sub);
+}
+.empty-state .icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+.empty-state p {
+    font-size: 14px;
+    margin: 0;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>国立国会図書館サーチ<span class="sub">― NDL Search API ―</span></h1>
+</header>
+
+<div class="container">
+
+    <div class="panel-left">
+        <div class="form-group">
+            <label for="keyword">検索キーワード</label>
+            <input type="text" id="keyword" placeholder="例：プログラミング入門">
+        </div>
+
+        <div class="form-group">
+            <label for="field">検索対象</label>
+            <select id="field">
+                <option value="title">タイトル</option>
+                <option value="creator">著者</option>
+                <option value="publisher">出版社</option>
+                <option value="anywhere">フリーワード（タイトル+著者+出版社）</option>
+            </select>
+        </div>
+
+        <button id="btnSearch" class="btn">検索</button>
+
+        <div class="status" id="searchStatus"></div>
+    </div>
+
+    <div class="panel-right">
+        <div id="resultsArea">
+            <div class="empty-state">
+                <div class="icon">📚</div>
+                <p>キーワードを入力して検索してください。<br>国立国会図書館の蔵書を検索できます。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var currentPage = 1;
+var currentKeyword = "";
+var currentField = "";
+var totalResults = 0;
+var perPage = 10;
+
+var keywordEl   = document.getElementById("keyword");
+var fieldEl     = document.getElementById("field");
+var btnSearch   = document.getElementById("btnSearch");
+var statusEl    = document.getElementById("searchStatus");
+var resultsArea = document.getElementById("resultsArea");
+
+function buildCQL(keyword, field) {
+    var safe = keyword.replace(/"/g, '');
+    if (field === "anywhere") {
+        return 'title="' + safe + '" OR creator="' + safe + '" OR publisher="' + safe + '"';
+    }
+    return field + '="' + safe + '"';
+}
+
+function doSearch(page) {
+    var kw = keywordEl.value.trim();
+    if (!kw) {
+        alert("検索キーワードを入力してください。");
+        keywordEl.focus();
+        return;
+    }
+
+    currentKeyword = kw;
+    currentField = fieldEl.value;
+    currentPage = page || 1;
+
+    btnSearch.disabled = true;
+    statusEl.textContent = "検索中...";
+    resultsArea.innerHTML = '<div class="loading"><div class="spinner"></div><br>国立国会図書館を検索しています...</div>';
+
+    var cql = buildCQL(currentKeyword, currentField);
+    var startRecord = (currentPage - 1) * perPage + 1;
+
+    var params = new URLSearchParams({
+        operation: "searchRetrieve",
+        query: cql,
+        maximumRecords: perPage,
+        startRecord: startRecord,
+        recordPacking: "xml",
+        recordSchema: "dcndl"
+    });
+
+    var url = "https://ndlsearch.ndl.go.jp/api/sru?" + params.toString();
+
+    fetch(url)
+    .then(function(res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.text();
+    })
+    .then(function(xmlText) {
+        var results = parseNDLResponse(xmlText);
+        renderResults(results);
+    })
+    .catch(function(err) {
+        statusEl.textContent = "エラー: " + err.message;
+        resultsArea.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>検索に失敗しました。<br>' + escHtml(err.message) + '</p></div>';
+    })
+    .finally(function() {
+        btnSearch.disabled = false;
+    });
+}
+
+function parseNDLResponse(xmlText) {
+    var clean = xmlText;
+    clean = clean.replace(/\s+xmlns(?::[a-zA-Z][\w]*)?\s*=\s*"[^"]*"/g, '');
+    clean = clean.replace(/\s+xmlns(?::[a-zA-Z][\w]*)?\s*=\s*'[^']*'/g, '');
+    clean = clean.replace(/<(\/?)([a-zA-Z][\w]*):([a-zA-Z])/g, '<$1$2_$3');
+    clean = clean.replace(/\s([a-zA-Z][\w]*):([a-zA-Z][\w]*)\s*=/g, ' $1_$2=');
+
+    var parser = new DOMParser();
+    var xml = parser.parseFromString(clean, "text/xml");
+
+    var parseErr = xml.querySelector("parsererror");
+    if (parseErr) {
+        console.error("XML parse error:", parseErr.textContent);
+        totalResults = 0;
+        return [];
+    }
+
+    var numEl = xml.getElementsByTagName("numberOfRecords")[0];
+    totalResults = numEl ? parseInt(numEl.textContent) || 0 : 0;
+
+    var allRecords = xml.getElementsByTagName("record");
+    var results = [];
+
+    for (var i = 0; i < allRecords.length; i++) {
+        var rec = allRecords[i];
+        var bib = rec.getElementsByTagName("dcndl_BibResource")[0];
+        if (!bib) continue;
+
+        var titleEl = bib.getElementsByTagName("dcterms_title")[0];
+        var title = titleEl ? titleEl.textContent.trim() : "(タイトル不明)";
+
+        var creators = [];
+        var creatorEls = bib.getElementsByTagName("dc_creator");
+        for (var c = 0; c < creatorEls.length; c++) {
+            var foafName = creatorEls[c].getElementsByTagName("foaf_name")[0];
+            var name = foafName ? foafName.textContent.trim() : creatorEls[c].textContent.trim();
+            if (name) creators.push(name);
+        }
+
+        var publisher = "";
+        var pubEl = bib.getElementsByTagName("dcterms_publisher")[0];
+        if (pubEl) {
+            var pubName = pubEl.getElementsByTagName("foaf_name")[0];
+            publisher = pubName ? pubName.textContent.trim() : pubEl.textContent.trim();
+        }
+
+        var date = "";
+        var dateEl = bib.getElementsByTagName("dcterms_date")[0];
+        if (!dateEl) dateEl = bib.getElementsByTagName("dcterms_issued")[0];
+        if (dateEl) date = dateEl.textContent.trim();
+
+        var isbn = "";
+        var idEls = bib.getElementsByTagName("dcterms_identifier");
+        for (var d = 0; d < idEls.length; d++) {
+            var val = idEls[d].textContent.trim();
+            if (/^[0-9X\-]{10,17}$/.test(val)) { isbn = val; break; }
+        }
+
+        var ndl_url = "";
+        var seeAlso = bib.getElementsByTagName("rdfs_seeAlso")[0];
+        if (seeAlso && seeAlso.getAttribute("rdf_resource")) {
+            ndl_url = seeAlso.getAttribute("rdf_resource");
+        }
+        if (!ndl_url) {
+            var about = bib.getAttribute("rdf_about");
+            if (about) ndl_url = about.replace(/#.*$/, '');
+        }
+
+        var subjects = [];
+        var subEls = bib.getElementsByTagName("dcterms_subject");
+        for (var s = 0; s < subEls.length && subjects.length < 3; s++) {
+            var sv = subEls[s].textContent.trim();
+            if (sv) subjects.push(sv);
+        }
+
+        results.push({
+            title: title,
+            creator: creators.join(", "),
+            publisher: publisher,
+            date: date,
+            isbn: isbn,
+            ndl_url: ndl_url,
+            subject: subjects.join(", ")
+        });
+    }
+    return results;
+}
+
+function renderResults(results) {
+    if (totalResults === 0 || results.length === 0) {
+        statusEl.textContent = "該当する資料が見つかりませんでした。";
+        resultsArea.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>「' + escHtml(currentKeyword) + '」に該当する資料は見つかりませんでした。<br>キーワードを変えて再検索してください。</p></div>';
+        return;
+    }
+
+    var totalPages = Math.ceil(totalResults / perPage);
+    statusEl.textContent = totalResults.toLocaleString() + " 件中 " + ((currentPage - 1) * perPage + 1) + "〜" + Math.min(currentPage * perPage, totalResults) + " 件を表示";
+
+    var html = '';
+    html += '<div class="results-header"><h2>検索結果</h2>';
+    html += '<div class="results-count">「' + escHtml(currentKeyword) + '」の検索結果: ' + totalResults.toLocaleString() + ' 件</div></div>';
+
+    for (var i = 0; i < results.length; i++) {
+        var r = results[i];
+        html += '<div class="result-card">';
+        html += '<div class="card-title">';
+        if (r.ndl_url) {
+            html += '<a href="' + escHtml(r.ndl_url) + '" target="_blank" rel="noopener">' + escHtml(r.title) + '</a>';
+        } else {
+            html += escHtml(r.title);
+        }
+        html += '</div>';
+        html += '<div class="card-meta">';
+        if (r.creator) html += '<span><span class="label">著者:</span> ' + escHtml(r.creator) + '</span>';
+        if (r.publisher) html += '<span><span class="label">出版:</span> ' + escHtml(r.publisher) + '</span>';
+        if (r.date) html += '<span><span class="label">年:</span> ' + escHtml(r.date) + '</span>';
+        if (r.isbn) html += '<span><span class="label">ISBN:</span> ' + escHtml(r.isbn) + '</span>';
+        html += '</div>';
+        if (r.subject) {
+            html += '<div class="card-subject">';
+            var subs = r.subject.split(", ");
+            for (var j = 0; j < subs.length; j++) {
+                html += '<span class="tag">' + escHtml(subs[j]) + '</span>';
+            }
+            html += '</div>';
+        }
+        html += '</div>';
+    }
+
+    if (totalPages > 1) {
+        html += '<div class="paging">';
+        html += '<button onclick="doSearch(' + (currentPage - 1) + ')"' + (currentPage <= 1 ? ' disabled' : '') + '>&lt; 前へ</button>';
+        html += '<span class="page-info">' + currentPage + ' / ' + totalPages + ' ページ</span>';
+        html += '<button onclick="doSearch(' + (currentPage + 1) + ')"' + (currentPage >= totalPages ? ' disabled' : '') + '>次へ &gt;</button>';
+        html += '</div>';
+    }
+
+    resultsArea.innerHTML = html;
+}
+
+function escHtml(str) {
+    if (!str) return "";
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+btnSearch.addEventListener("click", function() { doSearch(1); });
+keywordEl.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") { e.preventDefault(); doSearch(1); }
+});
+</script>
+
+</body>
+</html>
