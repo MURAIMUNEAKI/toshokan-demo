@@ -6,21 +6,38 @@
 <meta name="robots" content="noindex,nofollow">
 <title>国立国会図書館サーチ</title>
 
+<!--
+================================================================================
+  国立国会図書館サーチ SRU API
+  エンドポイント: https://ndlsearch.ndl.go.jp/api/sru
+  レスポンス形式: XML（dcndl スキーマ = RDF/Dublin Core拡張）
+  参考: https://qiita.com/saoyagi2/items/5c23550b0a00933386a6
+
+
+【改造のヒント】
+  ・色を変えたい → :root のCSS変数を変更する
+  ・表示件数を変えたい → perPage変数の値を変更する（最大500）
+  ・カードのデザインを変えたい → .result-card のCSSを変更する
+  ・検索条件を追加したい → buildCQL関数とselectのoptionを追加する
+  ・書影（表紙画像）を追加したい → ISBNからOpenBD API等で取得可能
+================================================================================
+-->
+
 <style>
 /* ──────────────────────────────────────────────
    CSS変数（テーマカラー）
    ここを変更するとアプリ全体の色が変わる
    ────────────────────────────────────────────── */
 :root {
-    --bg-main:   #f0f8ff;      /* ページ背景色（水色） */
+    --bg-main:   #e0f7fa;      /* ページ背景色（水色） */
     --bg-panel:  #ffffff;      /* カード背景色（白） */
     --bg-input:  #ffffff;      /* 入力欄背景色 */
     --text-main: #000000;      /* メインテキスト色 */
     --text-sub:  #333333;      /* サブテキスト色 */
-    --accent:    #007acc;      /* ボタン色（水色系） */
-    --accent-hover: #005f9e;   /* ボタンホバー色 */
-    --border:    #007acc;      /* 枠線色 */
-    --border-soft:#b3d7ff;     /* 薄い枠線色（装飾用） */
+    --accent:    #006064;      /* ボタン色 */
+    --accent-hover: #00838f;   /* ボタンホバー色 */
+    --border:    #006064;      /* 枠線色 */
+    --border-soft:#80deea;     /* 薄い枠線色（装飾用） */
     --shadow:    0 2px 6px rgba(0,0,0,0.08); /* 影 */
     --font-base: "Yu Gothic","Hiragino Kaku Gothic ProN","Helvetica Neue","Arial",sans-serif;
 }
@@ -41,10 +58,10 @@ html, body {
 body { display: flex; flex-direction: column; }
 
 /* ──────────────────────────────────────────────
-   ヘッダー（水色帯）
+   ヘッダー（黄色帯）
    ────────────────────────────────────────────── */
 header {
-    background: #87ceeb;
+    background: #4dd0e1;
     border-bottom: 2px solid var(--border);
     padding: 12px 24px;
     box-shadow: var(--shadow);
@@ -138,8 +155,8 @@ header h1 .sub {
 }
 .form-group input[type="text"]:focus,
 .form-group select:focus {
-    border-color: #005f9e;
-    box-shadow: 0 0 0 2px #b3d7ff;
+    border-color: #006064;
+    box-shadow: 0 0 0 2px #b2ebf2;
 }
 
 /* ──────────────────────────────────────────────
@@ -213,7 +230,7 @@ header h1 .sub {
     line-height: 1.4;
 }
 .result-card .card-title a {
-    color: #007acc;
+    color: #006064;
     text-decoration: none;
 }
 .result-card .card-title a:hover {
@@ -241,7 +258,7 @@ header h1 .sub {
 }
 .result-card .card-subject .tag {
     display: inline-block;
-    background: #e1f0ff;
+    background: #e0f7fa;
     border: 1px solid var(--border-soft);
     border-radius: 4px;
     padding: 2px 8px;
@@ -272,7 +289,7 @@ header h1 .sub {
     cursor: pointer;
     transition: background 0.2s;
 }
-.paging button:hover:not(:disabled) { background: #e1f0ff; }
+.paging button:hover:not(:disabled) { background: #b2ebf2; }
 .paging button:disabled { opacity: 0.4; cursor: not-allowed; }
 .paging .page-info {
     font-size: 13px;
@@ -511,6 +528,7 @@ function parseNDLResponse(xmlText) {
             subject: subjects.join(", ")
         });
     }
+
     return results;
 }
 
